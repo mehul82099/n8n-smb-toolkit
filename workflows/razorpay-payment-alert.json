@@ -1,0 +1,84 @@
+{
+  "name": "Razorpay Payment Alert to Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "razorpay-webhook",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Razorpay Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.event}}",
+              "value2": "payment.captured"
+            }
+          ]
+        }
+      },
+      "id": "if-node",
+      "name": "Payment Captured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const payment = $input.first().json.payload.payment.entity;\nconst amount = (payment.amount / 100).toFixed(2);\nconst message = `\u2705 *Payment Received!*\\n\\n` +\n  `\ud83d\udcb0 Amount: \u20b9${amount}\\n` +\n  `\ud83d\udccc Order ID: ${payment.order_id || 'N/A'}\\n` +\n  `\ud83d\udc64 Customer: ${payment.email || payment.contact || 'Unknown'}\\n` +\n  `\ud83d\udcb3 Method: ${payment.method}\\n` +\n  `\ud83d\udd51 Time: ${new Date(payment.created_at * 1000).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}\\n` +\n  `\ud83c\udd94 Payment ID: ${payment.id}`;\nreturn [{ json: { message } }];"
+      },
+      "id": "format-node",
+      "name": "Format Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{$json.message}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-node",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot - YOUR BOT NAME"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Razorpay Webhook": {
+      "main": [[{"node": "Payment Captured?", "type": "main", "index": 0}]]
+    },
+    "Payment Captured?": {
+      "main": [[{"node": "Format Message", "type": "main", "index": 0}], []]
+    },
+    "Format Message": {
+      "main": [[{"node": "Send Telegram Alert", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Sends a Telegram alert whenever a Razorpay payment is captured. Perfect for Indian SMBs to get instant payment notifications. Setup: 1) Add your Telegram Bot credentials 2) Replace YOUR_TELEGRAM_CHAT_ID with your chat ID 3) Set webhook URL in Razorpay dashboard to your n8n webhook URL",
+    "author": "Mehul Jhabak - github.com/mehul82099",
+    "tags": ["razorpay", "telegram", "payment", "india", "smb", "notification"]
+  }
+}
