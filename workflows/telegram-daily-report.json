@@ -1,0 +1,83 @@
+{
+  "name": "Telegram Daily Sales Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{
+            "field": "cronExpression",
+            "expression": "0 21 * * *"
+          }]
+        }
+      },
+      "id": "cron-node",
+      "name": "Daily 9PM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "notes": "Runs every day at 9:00 PM IST. Change the cron expression to change the time."
+    },
+    {
+      "parameters": {
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Orders", "mode": "name" },
+        "filtersUI": {
+          "values": [{
+            "lookupColumn": "Date",
+            "lookupValue": "={{ $today.toFormat('dd/MM/yyyy') }}"
+          }]
+        }
+      },
+      "id": "sheets-node",
+      "name": "Get Today's Orders",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [450, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets - YOUR ACCOUNT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const orders = $input.all();\nconst totalOrders = orders.length;\nconst totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.json.Amount) || 0), 0);\nconst avgOrder = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : 0;\nconst today = new Date().toLocaleDateString('en-IN', {timeZone: 'Asia/Kolkata', dateStyle: 'full'});\n\nconst message = `\ud83d\udcca *Daily Sales Report*\n${today}\n\n` +\n  `\ud83d\udce6 Total Orders: *${totalOrders}*\n` +\n  `\ud83d\udcb0 Total Revenue: *\u20b9${totalRevenue.toFixed(2)}*\n` +\n  `\ud83d\udcc8 Avg Order Value: *\u20b9${avgOrder}*\n\n` +\n  (totalOrders === 0 ? `\u26a0\ufe0f No orders today. Try sharing your catalog!` : `\ud83d\ude80 Great work! Keep it up!`);\n\nreturn [{ json: { message, totalOrders, totalRevenue } }];"
+      },
+      "id": "aggregate-node",
+      "name": "Calculate Summary",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-node",
+      "name": "Send Daily Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot - YOUR BOT NAME"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 9PM Trigger": { "main": [[{"node": "Get Today's Orders", "type": "main", "index": 0}]] },
+    "Get Today's Orders": { "main": [[{"node": "Calculate Summary", "type": "main", "index": 0}]] },
+    "Calculate Summary": { "main": [[{"node": "Send Daily Report", "type": "main", "index": 0}]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Sends a daily sales summary to Telegram every evening at 9PM. Reads orders from Google Sheets and calculates total orders, revenue, and average order value. Setup: 1) Connect Google Sheets with your orders data 2) Set YOUR_GOOGLE_SHEET_ID 3) Add Telegram Bot credentials 4) Activate workflow",
+    "author": "Mehul Jhabak - github.com/mehul82099",
+    "tags": ["telegram", "google-sheets", "daily-report", "sales", "india", "smb"]
+  }
+}
