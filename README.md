@@ -154,3 +154,5 @@ MIT License — free to use, modify, and distribute.
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2575fc,100:EA4B71&height=120&section=footer" width="100%"/>
 
 </div>
+
+<!-- Last updated: July 2026 -->
